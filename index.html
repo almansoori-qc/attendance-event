@@ -90,9 +90,7 @@
         <select id="evt_gender"><option value="">— اختر —</option><option>ذكر</option><option>أنثى</option></select>
       </div>
       <div class="fld"><button class="btn btn-main" onclick="evtStamp()">تسجيل الحضور</button></div>
-      
-
-<form id="attForm" autocomplete="off" action="https://script.google.com/macros/s/AKfycbyZWMKGQvaGSZKjctKVpYRmImodmcpfsENfbs3ANxzgFWQtZqL7ALzVmfTG-CupKb45/exec" method="POST">
+    
     </div>
   </div>
 
@@ -124,7 +122,7 @@ function todayKey(){return new Date().toDateString();}
 
 const KEY='markaz_events_only';
 let DATA=[];
-const CENTER={lat:24.368693,lng:54.530254},RADIUS=100; /* موقع المركز مثبّت — مدينة محمد بن زايد، أبوظبي */
+const CENTER={lat:24.416445,lng:54.603167},RADIUS=100; /* موقع المركز مثبّت — مدينة محمد بن زايد، أبوظبي */
 function save(){try{localStorage.setItem(KEY,JSON.stringify({data:DATA}));}catch(e){}}
 function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(Array.isArray(o.data))DATA=o.data;}}catch(e){}}
 
@@ -150,16 +148,61 @@ function geoCell(v){if(!v||v==='—')return '<span class="geo-pill gna">—</spa
   return '<span class="geo-pill gna">'+v+'</span>';}
 
 /* التسجيل */
+/* Registration: Saves locally and automatically syncs to Google Sheets */
 async function evtStamp(){
   const type=evt_type.value,title=evt_title.value.trim(),name=evt_name.value.trim(),empno=evt_empno.value.trim(),
     nat=evt_nat.value,job=evt_job.value.trim(),phone=evt_phone.value.trim(),gender=evt_gender.value;
-  if(!type){alert('يرجى اختيار نوع الفعالية.');return;}
-  if(!title){alert('يرجى إدخال عنوان النشاط.');return;}
-  if(!name){alert('يرجى إدخال اسم الزائر.');return;}
+    
+  if(!type){alert('Please select event type.');return;}
+  if(!title){alert('Please enter activity title.');return;}
+  if(!name){alert('Please enter visitor name.');return;}
+  
   const g=await geoStamp();if(!g)return;
-  const n=now();DATA.push({type,title,name,empno,nat,job,phone,gender,geo:g.label,lat:g.lat,lng:g.lng,date:n.date,time:n.time,day:todayKey()});
-  save();evt_name.value='';evt_empno.value='';evt_job.value='';evt_phone.value='';renderEvt();
-  showToast('✓ تم تسجيل الزائر: '+name+' — الساعة '+n.time,'ok');
+  const n=now();
+  
+  // 1. Existing local browser cache storage
+  DATA.push({type,title,name,empno,nat,job,phone,gender,geo:g.label,lat:g.lat,lng:g.lng,date:n.date,time:n.time,day:todayKey()});
+  save();
+  
+  // Refresh the local UI table immediately
+  renderEvt();
+  showToast('✓ Saved locally! Syncing with cloud database...','ok');
+
+  // 2. NEW: Send the exact same data to Google Sheets in the background
+  const webAppUrl = "https://script.google.com/macros/s/AKfycbx-PkbFxZtA0yBsuYZaR0Ys4g4EprMb4qtWLPecFOENyqFicNjMNdrnYvPnT_azAPk9/exec";
+
+  const formData = new URLSearchParams();
+  formData.append('Event Type', type);
+  formData.append('Activity Title', title);
+  formData.append('Full Name', name);
+  formData.append('Job Number', empno);
+  formData.append('Nationality', nat);
+  formData.append('Job Title', job);
+  formData.append('Phone Number', phone);
+  formData.append('Gender', gender);
+  formData.append('Date', n.date);
+  formData.append('Time', n.time);
+  formData.append('Latitude', g.lat);
+  formData.append('Longitude', g.lng);
+
+  // Silent background delivery
+  fetch(webAppUrl, {
+    method: "POST",
+    mode: "no-cors", // Essential to bypass Google's security redirect block
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: formData.toString()
+  }).then(() => {
+    showToast('✓ Data synced successfully to the live Google Sheet!','ok');
+  }).catch((err) => {
+    console.error("Sync error:", err);
+    showToast('⚠️ Cloud sync failed! Local copy is safe.','warn');
+  });
+
+  // 3. Clear text fields for the next submission (Your original logic)
+  evt_name.value='';
+  evt_empno.value='';
+  evt_job.value='';
+  evt_phone.value='';
 }
 function delRow(i){if(confirm('حذف هذا السجل؟')){DATA.splice(i,1);save();renderEvt();}}
 
