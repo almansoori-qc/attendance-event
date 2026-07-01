@@ -121,7 +121,7 @@ function todayKey(){return new Date().toDateString();}
 
 const KEY='markaz_events_only';
 let DATA=[];
-const CENTER={lat:24.368693,lng:54.530254},RADIUS=100; /* موقع المركز مثبّت — مدينة محمد بن زايد، أبوظبي */
+const CENTER={lat:24.416445,lng:54.603167},RADIUS=100; /* موقع المركز مثبّت — مدينة محمد بن زايد، أبوظبي */
 function save(){try{localStorage.setItem(KEY,JSON.stringify({data:DATA}));}catch(e){}}
 function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(Array.isArray(o.data))DATA=o.data;}}catch(e){}}
 
